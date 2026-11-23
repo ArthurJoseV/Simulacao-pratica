@@ -1,0 +1,220 @@
+SETUP E TEARDOWN DOS TESTES DA BIBLIOTECA
+Anotações a partir do projeto em 18/11/2026.
+
+1. O QUE SÃO
+
+Setup é o preparo necessário para executar um teste: autenticar o usuário,
+criar os dados e guardar os IDs que serão utilizados.
+
+Teardown é a limpeza após o teste: remover os recursos criados por ele para
+que a próxima execução não dependa dos dados deixados pela anterior.
+
+Fluxo: setup -> execução e validações do cenário -> teardown.
+
+O descarte do APIRequestContext encerra o contexto HTTP, mas não exclui os
+livros, empréstimos e usuários cadastrados no banco da API.
+
+2. O QUE JÁ EXISTE NO PROJETO
+
+tests/livros.spec.ts
+- O cadastro faz login como administrador e envia um livro novo.
+- O ID retornado é guardado antes das validações do cadastro.
+- O finally tenta excluir o livro mesmo se uma dessas validações falhar.
+- A exclusão verifica status 204 e corpo vazio.
+- Uma consulta posterior verifica 404 e o erro "Livro não encontrado".
+- Os outros quatro cenários não criam recursos quando a API se comporta
+  conforme o esperado: consulta, cadastro sem token, empréstimo recusado
+  por falta de estoque e cadastro recusado para leitor.
+
+tests/e2e/emprestimo.spec.ts
+- O beforeEach faz login como administrador e cadastra um livro.
+- O afterEach tenta excluir o livro usando o ID guardado.
+- Na leitura realizada, o arquivo contém somente hooks, sem um test(...).
+  Portanto, ainda não existe um cenário nesse arquivo para acioná-los.
+- O nome da pasta e2e não transforma o arquivo em teste de interface.
+  Para testar a tela, o corpo do teste precisa usar a fixture page.
+
+tests/support/api-helpers.ts
+- login retorna o token, cadastrarLivro retorna o ID e apagarLivro exclui.
+- Atualmente, login e cadastrarLivro verificam somente o status. Convém
+  conferir também token, usuário, dados enviados e ID inteiro positivo.
+- apagarLivro aceita 200 ou 204. O contrato desta API é exatamente 204,
+  sem corpo. O teste de cadastro em livros.spec.ts é a referência mais
+  completa para melhorar essa validação.
+
+3. ONDE COLOCAR O PREPARO E A LIMPEZA
+
+- Um único teste com dados próprios: usar variáveis locais e try/finally,
+  como no cadastro já implementado.
+- Vários testes com o mesmo tipo de preparo: usar beforeEach e afterEach
+  no arquivo ou em um test.describe que reúna apenas esses cenários.
+- beforeEach prepara cada teste; afterEach faz sua limpeza, inclusive
+  quando uma asserção do cenário falha.
+- beforeAll e afterAll atendem recursos compartilhados por worker. Não
+  representam necessariamente uma única execução para a suíte inteira.
+- Se o padrão crescer, uma fixture própria pode reunir preparo e limpeza:
+  o preparo vem antes de await use(...), e a limpeza vem depois.
+
+Não colocar login obrigatório em um beforeEach que também envolva o
+cenário "sem token": esse teste precisa continuar sem autenticação.
+
+4. PASSOS DO SETUP PARA UM LIVRO
+
+1) Reinicializar as variáveis de controle antes de cada preparo:
+   tokenAdmin = '' e livroId = undefined.
+2) Fazer POST /api/auth/login com as credenciais do seed:
+   admin@biblioteca.com / Admin@123.
+3) Verificar 200, token string não vazia e o usuário esperado.
+4) Preparar titulo, autor, isbn, anoPublicacao e quantidade.
+5) Fazer POST /api/livros com Authorization: Bearer <token>.
+6) Guardar o ID assim que o corpo puder ser lido e houver um ID válido,
+   antes das demais asserções, para permitir a limpeza se elas falharem.
+7) Verificar 201, ID inteiro positivo e os dados devolvidos.
+
+O helper cadastrarLivro atual só devolve o ID após validar o status.
+Ao acrescentar mais validações nesse helper, planejar como disponibilizar
+o ID à limpeza antes de uma possível falha nessas validações.
+
+5. PASSOS DO TEARDOWN
+
+1) Limpar apenas recursos criados pelo próprio teste.
+2) Usar os IDs recebidos da API; não presumir que o novo livro será o 6.
+3) Se houve empréstimo, resolvê-lo antes de excluir o livro:
+   DELETE /api/emprestimos/:id com token de administrador -> 204.
+4) Excluir o livro:
+   DELETE /api/livros/:id com token de administrador -> 204, corpo vazio.
+5) Consultar o livro excluído:
+   GET /api/livros/:id -> 404 e erro "Livro não encontrado".
+6) Excluir o usuário somente se ele também tiver sido criado pelo teste,
+   depois de remover seus empréstimos.
+
+Ordem de limpeza: empréstimos -> livros -> usuários.
+
+Um livro com empréstimo ativo não pode ser excluído: a resposta é 409.
+Outra opção é devolver o empréstimo usando
+PATCH /api/emprestimos/:id/devolucao, com o dono ou administrador:
+200 e status "devolvido". Depois, excluir o livro também remove o
+histórico dos empréstimos devolvidos associados a ele.
+
+O status 204 não tem JSON para validar. Usar resposta.text() para conferir
+o corpo vazio e uma consulta posterior para confirmar a exclusão.
+
+6. EXEMPLO DE HOOKS COM UM TESTE DE CONSULTA
+
+Este exemplo é uma orientação para um arquivo em tests/e2e/. Ele mostra
+preparo e limpeza de livro; não realiza um empréstimo nem usa navegador.
+As requisições aparecem diretamente para deixar as validações visíveis.
+
+import { test, expect } from '@playwright/test';
+import { login } from '../support/api-helpers';
+import { admin, novoLivro } from '../support/dados';
+
+let tokenAdmin = '';
+let livroId: number | undefined;
+
+test.beforeEach(async ({ request }) => {
+  tokenAdmin = '';
+  livroId = undefined;
+  tokenAdmin = await login(request, admin.email, admin.senha);
+
+  const dados = novoLivro(1);
+  const resposta = await request.post('/api/livros', {
+    headers: { Authorization: `Bearer ${tokenAdmin}` },
+    data: dados,
+  });
+  const livro = await resposta.json();
+
+  if (Number.isInteger(livro.id) && livro.id > 0) {
+    livroId = livro.id;
+  }
+
+  expect(resposta.status()).toBe(201);
+  expect(livro).toMatchObject(dados);
+  expect(livroId).toBeDefined();
+});
+
+test.afterEach(async ({ request }) => {
+  if (livroId === undefined) return;
+
+  const exclusao = await request.delete(`/api/livros/${livroId}`, {
+    headers: { Authorization: `Bearer ${tokenAdmin}` },
+  });
+  expect(exclusao.status()).toBe(204);
+  expect(await exclusao.text()).toBe('');
+
+  const consulta = await request.get(`/api/livros/${livroId}`);
+  expect(consulta.status()).toBe(404);
+  expect(await consulta.json()).toEqual({
+    erro: 'Livro não encontrado', detalhes: [], status: 404,
+  });
+});
+
+test('Consultar o livro preparado retorna 200 e disponível', async ({ request }) => {
+  const resposta = await request.get(`/api/livros/${livroId}`);
+  expect(resposta.status()).toBe(200);
+  expect(await resposta.json()).toMatchObject({
+    id: livroId, disponivel: true,
+  });
+});
+
+7. COMO ADAPTAR PARA O TESTE DE EMPRÉSTIMO
+
+- Manter o setup com um livro próprio e quantidade de pelo menos 1.
+- Fazer login como leitor: leitor@biblioteca.com / Leitor@123.
+- No cenário, enviar POST /api/emprestimos com { livroId } e token do
+  leitor; guardar emprestimoId antes das demais validações.
+- Validar 201, livroId correto, status "ativo" e dataDevolucao null.
+- No afterEach, excluir o empréstimo com tokenAdmin antes do livro.
+- Para um teste de interface, criar o livro via API, autenticar o leitor
+  na interface e realizar a ação com page. Depois, localizar pela API o
+  empréstimo do usuário para aquele livro e removê-lo na limpeza.
+
+8. ISOLAMENTO DOS DADOS
+
+- fullyParallel está habilitado. Cada worker tem suas variáveis, mas os
+  testes acessam o mesmo banco da API. Criar recursos próprios por teste.
+- novoLivro usa Date.now() no ISBN. Chamadas no mesmo milissegundo podem
+  repetir o valor. O gerador aleatório de 13 dígitos já existente em
+  tests/helpers/biblioteca.ts reduz esse risco.
+- Muitos testes simultâneos usando o mesmo leitor podem atingir o limite
+  de três empréstimos ativos. Nesse caso, preparar um leitor por teste e
+  removê-lo depois de limpar seus empréstimos.
+- Não excluir os usuários ou livros fixos do seed. Os cenários atuais
+  dependem, por exemplo, de Dom Casmurro (1) e Vidas Secas (4).
+- A API usa memória e aplica o seed quando inicia em desenvolvimento.
+  Isso não equivale a restaurar os dados antes de cada teste.
+- reuseExistingServer permite reutilizar uma API já iniciada, cujos dados
+  podem ter sido alterados em execuções ou ações anteriores.
+- POST /api/test/seed já limpa o banco e repõe os dados fixos.
+  POST /api/test/reset apaga tudo, inclusive os usuários do seed.
+  Essas rotas não existem em produção. Não chamá-las dentro dos hooks de
+  testes paralelos: um teste apagaria os dados dos outros.
+
+9. VERIFICAÇÃO E FONTES
+
+Comando utilizado nesta investigação:
+  npm test -- --list
+
+Resultado: TypeScript sem erros; cinco testes encontrados, todos em
+tests/livros.spec.ts. Esse comando lista os testes, sem executar suas
+requisições de API ou seus hooks. O exemplo deste TXT não foi instalado
+como teste executável no projeto.
+
+Para verificar os tipos: npm run typecheck
+Para executar os cenários: npm test
+Após adicionar um test(...) ao arquivo de empréstimo:
+  npm test -- tests/e2e/emprestimo.spec.ts
+
+Fontes locais consultadas:
+- tests/livros.spec.ts e tests/e2e/emprestimo.spec.ts.
+- tests/support/api-helpers.ts, tests/support/dados.ts e
+  tests/helpers/biblioteca.ts.
+- playwright.config.ts e api-testing-playwright/README.md.
+- Serviços de livros e empréstimos e rotas de empréstimos da API local.
+
+Documentação oficial consultada:
+- API da Biblioteca: https://github.com/Brencosta/api-testing-playwright
+- beforeEach: https://playwright.dev/docs/api/class-test#test-before-each
+- afterEach: https://playwright.dev/docs/api/class-test#test-after-each
+- Fixtures: https://playwright.dev/docs/test-fixtures
+- Testes de API: https://playwright.dev/docs/api-testing

@@ -19,6 +19,10 @@ O Playwright inicia a API automaticamente na porta **3001**, com os dados do see
 Se a API já estiver rodando nessa porta, ela será reutilizada na execução local.
 Não é necessário instalar navegadores para estes testes.
 
+O comando `npm test` verifica primeiro todos os arquivos TypeScript de `tests/`,
+inclusive os arquivos de suporte que ainda não são importados pelos cenários.
+Para executar somente essa verificação, use `npm run typecheck`.
+
 ## Cenários da atividade
 
 - [x] Consulta do livro 1: status 200, título `Dom Casmurro` e disponível.
