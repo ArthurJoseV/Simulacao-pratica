@@ -17,7 +17,7 @@ export default defineConfig({
   projects: [{ name: 'api' }],
 
   webServer: {
-    command: 'npm --prefix api-testing-playwright run dev',
+    command: 'npm --prefix biblioteca-api run dev',
     url: 'http://localhost:3001/api/health',
     reuseExistingServer: !process.env.CI,
     env: { PORT: '3001', NODE_ENV: 'development' },

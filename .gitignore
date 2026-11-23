@@ -9,3 +9,5 @@ node_modules/
 
 # A API é clonada separadamente; este repositório contém os testes.
 /api-testing-playwright/
+/biblioteca-api/
+/biblioteca-api-source.zip
