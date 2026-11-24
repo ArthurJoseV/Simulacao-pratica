@@ -74,12 +74,12 @@ em **2,7 segundos**, sem retentativas. A verificação TypeScript
 (`npm.cmd run typecheck`) também passou. Nenhum bug foi identificado nos cinco
 cenários executados; esse resultado se limita ao escopo inicial.
 
-O [print do relatório](evidencias/relatorio-playwright.png) foi capturado da página
+O [print do relatório](evidencias/Captura%20de%20tela%202026-11-24%20192447.png) foi capturado da página
 servida por `npx playwright show-report --host 127.0.0.1 --port 9323` após essa
 execução. Uma nova execução atualiza o relatório HTML; gere um novo print se os
 resultados mudarem.
 
-![Relatório Playwright com os cinco casos aprovados](evidencias/relatorio-playwright.png)
+![Relatório Playwright com os 12 casos aprovados](evidencias/Captura%20de%20tela%202026-11-24%20192447.png)
 
 ### Próximos sete casos para completar o mínimo de 12
 
