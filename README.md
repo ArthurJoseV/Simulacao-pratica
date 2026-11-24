@@ -1,4 +1,103 @@
-# Setup e teardown da Biblioteca
+# Testes automatizados da Biblioteca
+
+## Ciclo de testes — apresentação de 25/11/2026
+
+A plataforma escolhida é a **Biblioteca**, um sistema web com login, catálogo de
+livros, filtros por autor e disponibilidade, consulta de detalhes, empréstimos e
+devoluções. Existem perfis de administrador e leitor.
+
+Esta primeira etapa implementa **cinco casos E2E** em
+[`tests/apresentacao/biblioteca.spec.ts`](tests/apresentacao/biblioteca.spec.ts).
+A atividade completa exige **pelo menos 12 casos automatizados**; os sete casos
+adicionais sugeridos abaixo ainda precisam ser implementados.
+
+### Objetivos e planejamento
+
+Validar o acesso do leitor, a busca no catálogo e as regras de disponibilidade
+dos empréstimos. O escopo inicial cobre dois cenários de autenticação, um de
+filtro e dois de empréstimo, incluindo resultados esperados de sucesso e erro.
+Cadastro de usuários, permissões de administrador e devoluções ficam fora desta
+primeira etapa.
+
+| Caso | Pré-condição e passos | Resultado esperado |
+|---|---|---|
+| CT-01 — Login válido | Abrir `/login`; informar `leitor@biblioteca.com` / `Leitor@123`; clicar em Entrar. | Abrir `/livros`, mostrar o catálogo e `Leitor Padrão (leitor)`. |
+| CT-02 — Senha incorreta | Abrir `/login`; informar o mesmo e-mail com `SenhaIncorreta@123`; clicar em Entrar. | Permanecer no login, exibir `E-mail ou senha inválidos` e não criar sessão. |
+| CT-03 — Filtro por autor | Preparar dois livros de autores diferentes; autenticar o leitor; buscar parte do autor em letras minúsculas. | Exibir somente o livro correspondente e excluir o autor de controle. |
+| CT-04 — Empréstimo disponível | Preparar um livro com um exemplar; autenticar o leitor; abrir o detalhe e clicar em Emprestar. | Retornar 201, mostrar sucesso, atualizar para `Indisponível` / `0 de 1` e registrar o empréstimo em Meus empréstimos. |
+| CT-05 — Livro indisponível | Preparar um livro sem exemplares; autenticar o leitor; abrir o detalhe e clicar em Emprestar. | Retornar 409, mostrar `Livro indisponível`, manter `0 de 0` e não criar empréstimo. |
+
+O ciclo simulado segue: **análise dos requisitos → planejamento → elaboração dos
+casos → preparação do ambiente → automação e execução → análise dos resultados**.
+Na preparação, a API local fornece os usuários do seed; os testes criam livros
+com ISBNs aleatórios. As ações verificadas acontecem no Chromium e as respostas
+são reais, sem mocks. Cada teste tem uma sessão de navegador independente.
+
+O setup autentica pela API nos casos CT-03 a CT-05 para concentrar esses testes no
+catálogo e nos empréstimos. CT-01 e CT-02 usam a própria tela de login. O teardown
+remove apenas os livros e empréstimos criados pelo teste, inclusive quando uma
+asserção falha, apagando primeiro o empréstimo e depois o livro.
+
+### Executar os cinco casos e abrir o relatório
+
+Após instalar o projeto e a API conforme a seção **Como executar**, use:
+
+```powershell
+npm.cmd run test:apresentacao
+npx playwright show-report
+```
+
+Para acompanhar as ações no navegador durante a apresentação:
+
+```powershell
+npm.cmd run test:apresentacao -- --headed
+```
+
+A configuração [`playwright.apresentacao.config.ts`](playwright.apresentacao.config.ts)
+seleciona somente os cinco casos, usa um worker e não repete falhas
+automaticamente. A API inicia na porta **3001**. A execução é sequencial porque
+os testes compartilham o leitor, cujo limite é de três empréstimos ativos.
+Se já houver uma API nessa porta, ela será reutilizada; mantenha esse leitor
+abaixo do limite para o CT-04. Prints e traces de falhas ficam anexados ao
+relatório HTML em `playwright-report/`.
+
+A evidência exigida é um print da página aberta por `npx playwright show-report`,
+com os totais e os cinco casos visíveis. Os erros esperados dos CT-02 e CT-05
+devem resultar em testes **aprovados**, pois confirmam o comportamento previsto.
+Se algum caso reprovar, comparar esperado e obtido, investigar a causa e registrar
+o defeito com passos e evidência quando houver um bug confirmado.
+
+### Resultados e evidência desta etapa
+
+Execução em **24/11/2026**, no Chromium: **5 aprovados, 0 reprovados, 0 ignorados**,
+em **2,7 segundos**, sem retentativas. A verificação TypeScript
+(`npm.cmd run typecheck`) também passou. Nenhum bug foi identificado nos cinco
+cenários executados; esse resultado se limita ao escopo inicial.
+
+O [print do relatório](evidencias/relatorio-playwright.png) foi capturado da página
+servida por `npx playwright show-report --host 127.0.0.1 --port 9323` após essa
+execução. Uma nova execução atualiza o relatório HTML; gere um novo print se os
+resultados mudarem.
+
+![Relatório Playwright com os cinco casos aprovados](evidencias/relatorio-playwright.png)
+
+### Próximos sete casos para completar o mínimo de 12
+
+1. CT-06 — Login sem preencher e-mail e senha.
+2. CT-07 — Logout e limpeza da sessão.
+3. CT-08 — Acesso ao catálogo sem autenticação.
+4. CT-09 — Filtro de disponibilidade.
+5. CT-10 — Busca por autor inexistente.
+6. CT-11 — Abertura e conferência dos detalhes de um livro pelo catálogo.
+7. CT-12 — Devolução e restauração da disponibilidade do exemplar.
+
+### Roteiro de cinco minutos para o grupo
+
+- **Pessoa 1 — 0:00 a 1:20:** apresentar a Biblioteca, o objetivo e a matriz de casos.
+- **Pessoa 2 — 1:20 a 3:40:** explicar um teste, o setup e o teardown; executar a suíte.
+- **Pessoa 3 — 3:40 a 5:00:** abrir o relatório, mostrar o print e discutir resultados e bugs confirmados.
+
+## Atividade anterior: setup e teardown
 
 Atividade de setup e teardown com Playwright: preparo dos dados pela API,
 validação na interface e limpeza ao final dos testes, usando a
@@ -7,17 +106,21 @@ O projeto também inclui os cenários anteriores de testes de API.
 
 ## Como executar
 
-Com Node.js 20 ou superior instalado, execute na pasta deste projeto:
+Com Node.js 20 ou superior instalado, clone o projeto e execute os cinco casos da
+apresentação:
 
 ```powershell
+git clone https://github.com/ArthurJoseV/Simulacao-pratica.git
+cd Simulacao-pratica
 npm ci
 git clone --branch main --single-branch https://github.com/Brencosta/api-testing-playwright.git biblioteca-api
 npm ci --prefix biblioteca-api
 npx playwright install chromium
-npm test
+npm run test:apresentacao
 ```
 
-Se a pasta `biblioteca-api` já existir, pule o comando `git clone`.
+Se já estiver na pasta do projeto, pule o primeiro clone e o `cd`.
+Se a pasta `biblioteca-api` já existir, pule o clone da API.
 O Playwright inicia a API automaticamente na porta **3001**, com os dados do seed.
 Se a API já estiver rodando nessa porta, ela será reutilizada na execução local.
 Os testes de API dispensam navegador; os testes de listagem e empréstimo em
@@ -109,7 +212,8 @@ Para abrir o relatório após a execução:
 npx playwright show-report
 ```
 
-O GitHub Actions também baixa a API, instala as dependências e executa os testes.
+O GitHub Actions também baixa a API, instala as dependências e executa os cinco
+testes da apresentação com `npm run test:apresentacao`.
 O fluxo está em [`.github/workflows/playwright.yml`](.github/workflows/playwright.yml)
 e roda em pushes e pull requests para `main` ou `master`. O relatório HTML fica
 disponível nos artefatos da execução.
@@ -117,7 +221,7 @@ disponível nos artefatos da execução.
 ## Entrega
 
 Repositório da atividade:
-[ArthurJoseV/setup-e-teardown](https://github.com/ArthurJoseV/setup-e-teardown).
+[ArthurJoseV/Simulacao-pratica](https://github.com/ArthurJoseV/Simulacao-pratica).
 
 A entrega deve incluir os testes da Biblioteca, a configuração do Playwright, os
 arquivos `package.json` e `package-lock.json`, este README e o workflow. O
@@ -125,10 +229,10 @@ repositório deve estar **público** para a avaliação.
 
 Texto para enviar no Moodle:
 
-> Repositório: https://github.com/ArthurJoseV/setup-e-teardown
+> Repositório: https://github.com/ArthurJoseV/Simulacao-pratica
 >
-> Sem teardown, os dados criados permanecem na API e podem causar falhas nas
-> próximas execuções, como conflito de ISBN.
+> Simulação do ciclo de testes da Biblioteca com Playwright. Esta etapa contém
+> cinco casos automatizados, planejamento e captura do relatório de execução.
 
 A pasta da API é clonada separadamente durante a instalação. Ela, as dependências
 e os relatórios gerados são ignorados pelo `.gitignore`.
