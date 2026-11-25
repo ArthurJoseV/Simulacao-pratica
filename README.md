@@ -92,19 +92,6 @@ resultados mudarem.
 6. CT-11 — Abertura e conferência dos detalhes de um livro pelo catálogo.
 7. CT-12 — Devolução e restauração da disponibilidade do exemplar.
 
-### Roteiro de cinco minutos para o grupo
-
-- **Pessoa 1 — 0:00 a 1:20:** apresentar a Biblioteca, o objetivo e a matriz de casos.
-- **Pessoa 2 — 1:20 a 3:40:** explicar um teste, o setup e o teardown; executar a suíte.
-- **Pessoa 3 — 3:40 a 5:00:** abrir o relatório, mostrar o print e discutir resultados e bugs confirmados.
-
-## Atividade anterior: setup e teardown
-
-Atividade de setup e teardown com Playwright: preparo dos dados pela API,
-validação na interface e limpeza ao final dos testes, usando a
-[API da Biblioteca](https://github.com/Brencosta/api-testing-playwright).
-O projeto também inclui os cenários anteriores de testes de API.
-
 ## Como executar
 
 Com Node.js 20 ou superior instalado, use os comandos abaixo para clonar o projeto
@@ -224,16 +211,3 @@ disponível nos artefatos da execução.
 Repositório da atividade:
 [ArthurJoseV/Simulacao-pratica](https://github.com/ArthurJoseV/Simulacao-pratica).
 
-A entrega deve incluir os testes da Biblioteca, a configuração do Playwright, os
-arquivos `package.json` e `package-lock.json`, este README e o workflow. O
-repositório deve estar **público** para a avaliação.
-
-Texto para enviar no Moodle:
-
-> Repositório: https://github.com/ArthurJoseV/Simulacao-pratica
->
-> Simulação do ciclo de testes da Biblioteca com Playwright. Esta etapa contém
-> 12 casos automatizados em três navegadores, planejamento e captura do relatório de execução.
-
-A pasta da API é clonada separadamente durante a instalação. Ela, as dependências
-e os relatórios gerados são ignorados pelo `.gitignore`.
