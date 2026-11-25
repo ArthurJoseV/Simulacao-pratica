@@ -6,10 +6,9 @@ A plataforma escolhida é a **Biblioteca**, um sistema web com login, catálogo 
 livros, filtros por autor e disponibilidade, consulta de detalhes, empréstimos e
 devoluções. Existem perfis de administrador e leitor.
 
-Esta primeira etapa implementa **cinco casos E2E** em
+Os **12 casos E2E** da apresentação estão em
 [`tests/apresentacao/biblioteca.spec.ts`](tests/apresentacao/biblioteca.spec.ts).
-A atividade completa exige **pelo menos 12 casos automatizados**; os sete casos
-adicionais sugeridos abaixo ainda precisam ser implementados.
+Os cinco primeiros formaram a etapa inicial e os sete seguintes completaram a suíte.
 
 ### Objetivos e planejamento
 
@@ -30,7 +29,7 @@ primeira etapa.
 O ciclo simulado segue: **análise dos requisitos → planejamento → elaboração dos
 casos → preparação do ambiente → automação e execução → análise dos resultados**.
 Na preparação, a API local fornece os usuários do seed; os testes criam livros
-com ISBNs aleatórios. As ações verificadas acontecem no Chromium e as respostas
+com ISBNs aleatórios. As ações verificadas acontecem no Chromium, Firefox e WebKit e as respostas
 são reais, sem mocks. Cada teste tem uma sessão de navegador independente.
 
 O setup autentica pela API nos casos CT-03 a CT-05 para concentrar esses testes no
@@ -38,7 +37,7 @@ catálogo e nos empréstimos. CT-01 e CT-02 usam a própria tela de login. O tea
 remove apenas os livros e empréstimos criados pelo teste, inclusive quando uma
 asserção falha, apagando primeiro o empréstimo e depois o livro.
 
-### Executar os cinco casos e abrir o relatório
+### Executar os testes nos três navegadores e abrir o relatório
 
 Após instalar o projeto e a API conforme a seção **Como executar**, use:
 
@@ -54,20 +53,22 @@ npm.cmd run test:apresentacao -- --headed
 ```
 
 A configuração [`playwright.apresentacao.config.ts`](playwright.apresentacao.config.ts)
-seleciona somente os cinco casos, usa um worker e não repete falhas
-automaticamente. A API inicia na porta **3001**. A execução é sequencial porque
+executa os mesmos 12 casos em cada navegador, totalizando **36 execuções** com
+um worker e sem retentativas. Para rodar em apenas um navegador, acrescente
+`--project=chromium`, `--project=firefox` ou `--project=webkit` após `--` no comando npm.
+A API inicia na porta **3001**. A execução é sequencial porque
 os testes compartilham o leitor, cujo limite é de três empréstimos ativos.
 Se já houver uma API nessa porta, ela será reutilizada; mantenha esse leitor
 abaixo do limite para o CT-04. Prints e traces de falhas ficam anexados ao
 relatório HTML em `playwright-report/`.
 
 A evidência exigida é um print da página aberta por `npx playwright show-report`,
-com os totais e os cinco casos visíveis. Os erros esperados dos CT-02 e CT-05
+com os totais e os casos visíveis. Os erros esperados dos CT-02 e CT-05
 devem resultar em testes **aprovados**, pois confirmam o comportamento previsto.
 Se algum caso reprovar, comparar esperado e obtido, investigar a causa e registrar
 o defeito com passos e evidência quando houver um bug confirmado.
 
-### Resultados e evidência desta etapa
+### Resultados e evidência da etapa inicial
 
 Execução em **24/11/2026**, no Chromium: **5 aprovados, 0 reprovados, 0 ignorados**,
 em **2,7 segundos**, sem retentativas. A verificação TypeScript
@@ -81,7 +82,7 @@ resultados mudarem.
 
 ![Relatório Playwright com os 12 casos aprovados](evidencias/Captura%20de%20tela%202026-11-24%20192447.png)
 
-### Próximos sete casos para completar o mínimo de 12
+### Sete casos adicionais da suíte
 
 1. CT-06 — Login sem preencher e-mail e senha.
 2. CT-07 — Logout e limpeza da sessão.
@@ -106,8 +107,8 @@ O projeto também inclui os cenários anteriores de testes de API.
 
 ## Como executar
 
-Com Node.js 20 ou superior instalado, clone o projeto e execute os cinco casos da
-apresentação:
+Com Node.js 20 ou superior instalado, use os comandos abaixo para clonar o projeto
+e executar os testes da apresentação.
 
 ```powershell
 git clone https://github.com/ArthurJoseV/Simulacao-pratica.git
@@ -115,7 +116,7 @@ cd Simulacao-pratica
 npm ci
 git clone --branch main --single-branch https://github.com/Brencosta/api-testing-playwright.git biblioteca-api
 npm ci --prefix biblioteca-api
-npx playwright install chromium
+npx playwright install chromium firefox webkit
 npm run test:apresentacao
 ```
 
@@ -212,8 +213,8 @@ Para abrir o relatório após a execução:
 npx playwright show-report
 ```
 
-O GitHub Actions também baixa a API, instala as dependências e executa os cinco
-testes da apresentação com `npm run test:apresentacao`.
+O GitHub Actions também baixa a API, instala as dependências e executa os testes
+da apresentação nos três navegadores com `npm run test:apresentacao`.
 O fluxo está em [`.github/workflows/playwright.yml`](.github/workflows/playwright.yml)
 e roda em pushes e pull requests para `main` ou `master`. O relatório HTML fica
 disponível nos artefatos da execução.
@@ -232,7 +233,7 @@ Texto para enviar no Moodle:
 > Repositório: https://github.com/ArthurJoseV/Simulacao-pratica
 >
 > Simulação do ciclo de testes da Biblioteca com Playwright. Esta etapa contém
-> cinco casos automatizados, planejamento e captura do relatório de execução.
+> 12 casos automatizados em três navegadores, planejamento e captura do relatório de execução.
 
 A pasta da API é clonada separadamente durante a instalação. Ela, as dependências
 e os relatórios gerados são ignorados pelo `.gitignore`.
